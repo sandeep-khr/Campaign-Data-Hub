@@ -1,0 +1,8 @@
+{
+  "a243f68f8b66f4cbd2149159ced14eaae67976be19c0a7755f45828e55d22ed8": {
+    "platform": "meta",
+    "spend_divisor": "100",
+    "rule_id": "meta.cents_to_usd",
+    "reason": "Reviewed interpretation: all 35 spend values are whole numbers and roughly 100 times other Meta weeks. Treat this exact content as cents mislabeled as dollars; retain FAIL health and original values."
+  }
+}
