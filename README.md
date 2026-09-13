@@ -71,6 +71,10 @@ USD remains the canonical reporting value. The dashboard can display USD or EUR 
 
 For one displayed number, the UI can open its source records. Each record links to a delivery, filename, content hash and line/index locator, while showing the raw values and the transformations that produced the canonical values.
 
+The interface uses Digitalzone's public logo, Futura PT headings, Roboto body text and its navy/violet/blue palette. The platform selector and popovers use Radix primitives, and the date range uses DayPicker. This follows the same composition model as shadcn components while keeping the existing Vite application and a small CSS layer instead of adding Tailwind solely for the component generator. The UI remains usable when hosted without the web fonts because each font stack has local fallbacks.
+
+Campaign metrics have platform, campaign, date-range and display-currency controls. Data health has a capped notification menu, a visible ingestion pipeline, file/ID search, platform and health filters, a date range, and an eight-week paginated delivery-coverage grid. These controls are data-driven and do not assume that the input belongs to a particular month.
+
 ## API
 
 | Method | Path | Purpose |

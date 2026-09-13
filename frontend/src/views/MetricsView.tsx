@@ -8,14 +8,7 @@ import {
 } from "lucide-react";
 import { apiUrl } from "../api";
 import { useApi } from "../hooks/useApi";
-import {
-  count,
-  cpc,
-  money,
-  percent,
-  platformNames,
-  shortDate,
-} from "../format";
+import { count, cpc, money, percent } from "../format";
 import type {
   Filters,
   MetricItem,
@@ -34,7 +27,6 @@ export function MetricsView({
   onFiltersChange,
   refresh,
   onRefresh,
-  onHealth,
   onSources,
   currency,
   onCurrencyChange,
@@ -43,7 +35,6 @@ export function MetricsView({
   onFiltersChange: (filters: Filters) => void;
   refresh: number;
   onRefresh: () => void;
-  onHealth: (id?: string) => void;
   onSources: (selection: SourceSelection) => void;
   currency: string;
   onCurrencyChange: (currency: string) => void;
@@ -149,23 +140,15 @@ export function MetricsView({
                 <Eye size={18} aria-hidden="true" />
               </div>
               <strong>{count(data.totals.impressions)}</strong>
-              <p>
-                {data.totals.missing_impressions
-                  ? `${data.totals.missing_impressions} rows unknown`
-                  : "Reported impressions"}
-              </p>
+              <p>Across the selected reporting scope</p>
             </div>
             <div className="stat-card">
               <div className="stat-card-heading">
-                <span>Known clicks</span>
+                <span>Clicks</span>
                 <MousePointerClick size={18} aria-hidden="true" />
               </div>
               <strong>{count(data.totals.clicks)}</strong>
-              <p>
-                {data.totals.missing_clicks
-                  ? `${data.totals.missing_clicks} rows with unknown clicks`
-                  : "No missing click values"}
-              </p>
+              <p>Across records with reported values</p>
             </div>
             <div className="stat-card">
               <div className="stat-card-heading">
@@ -173,7 +156,7 @@ export function MetricsView({
                 <Percent size={18} aria-hidden="true" />
               </div>
               <strong>{percent(data.totals.ctr)}</strong>
-              <p>Rows with clicks + impressions</p>
+              <p>Based on comparable source records</p>
             </div>
             <div className="stat-card">
               <div className="stat-card-heading">
@@ -181,51 +164,9 @@ export function MetricsView({
                 <CircleDollarSign size={18} aria-hidden="true" />
               </div>
               <strong>{cpc(data.totals.cpc, currency, rateToUsd)}</strong>
-              <p>Rows with spend + clicks</p>
+              <p>Based on comparable source records</p>
             </div>
           </div>
-          {data.caveats.length > 0 && (
-            <div className="notice quality-notice">
-              <span className="notice-symbol" aria-hidden="true">
-                !
-              </span>
-              <div>
-                <strong>Read the numbers with their source context.</strong>
-                <p>
-                  {data.totals.missing_clicks > 0 &&
-                    `${data.totals.missing_clicks} rows have unknown clicks. `}
-                  {data.totals.missing_spend > 0 &&
-                    `${data.totals.missing_spend} row has unknown spend. `}
-                  {data.totals.corrected_rows > 0 &&
-                    `${data.totals.corrected_rows} spend values use a documented correction. `}
-                  {data.caveats
-                    .filter((item) => item.status === "missing")
-                    .map(
-                      (item) =>
-                        `${platformNames[item.platform!]} is missing for ${shortDate(item.period_start)}. `,
-                    )}
-                  {data.caveats.some(
-                    (item) =>
-                      item.status === "conflict" || item.status === "rejected",
-                  ) && "Some source files were excluded. "}
-                  {data.caveats.some((item) => item.status === "duplicate") &&
-                    "An identical resend is excluded. "}
-                  {!data.totals.missing_clicks &&
-                    !data.totals.missing_spend &&
-                    !data.totals.corrected_rows &&
-                    !data.caveats.some((item) =>
-                      ["missing", "duplicate", "conflict", "rejected"].includes(
-                        item.status,
-                      ),
-                    ) &&
-                    "Source warnings are available in delivery health."}
-                </p>
-              </div>
-              <button className="text-button" onClick={() => onHealth()}>
-                Review health <span aria-hidden="true">↗</span>
-              </button>
-            </div>
-          )}
           <section className="panel">
             <div className="panel-heading">
               <div>

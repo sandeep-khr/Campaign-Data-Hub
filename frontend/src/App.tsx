@@ -1,9 +1,17 @@
 import { useCallback, useState } from "react";
+import { RefreshCw } from "lucide-react";
 import { ApiError, apiUrl, request } from "./api";
-import type { Filters, IngestionResponse, SourceSelection } from "./types";
+import type {
+  DeliveriesResponse,
+  Filters,
+  IngestionResponse,
+  SourceSelection,
+} from "./types";
 import { MetricsView } from "./views/MetricsView";
 import { HealthView } from "./views/HealthView";
 import { SourceDetails } from "./components/SourceDetails";
+import { HealthNotifications } from "./components/HealthNotifications";
+import { useApi } from "./hooks/useApi";
 
 type View = "metrics" | "health";
 
@@ -27,6 +35,10 @@ export default function App() {
   const [deliverySelection, setDeliverySelection] = useState<
     string | undefined
   >();
+  const healthResult = useApi<DeliveriesResponse>(
+    apiUrl("deliveries"),
+    refresh,
+  );
   const refreshReport = useCallback(() => {
     setSourceSelection(null);
     setDeliverySelection(undefined);
@@ -65,15 +77,13 @@ export default function App() {
     <div className="app-shell">
       <header className="site-header">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span>
-            <strong>Campaign Hub</strong>
-            <small>Performance with provenance</small>
-          </span>
+          <img
+            className="company-logo"
+            src="/digitalzone-logo.svg"
+            alt="Digitalzone"
+          />
+          <span className="brand-divider" aria-hidden="true" />
+          <span className="product-name">Campaign Data Hub</span>
         </div>
         <nav aria-label="Primary navigation">
           <button
@@ -89,22 +99,29 @@ export default function App() {
             Data health
           </button>
         </nav>
-        <button
-          className="primary-button"
-          onClick={ingest}
-          disabled={ingesting}
-        >
-          {ingesting ? (
-            <>
-              <span className="spinner light" aria-hidden="true" />
-              Processing…
-            </>
-          ) : (
-            <>
-              <span aria-hidden="true">↻</span> Run ingestion
-            </>
-          )}
-        </button>
+        <div className="header-actions">
+          <HealthNotifications
+            data={healthResult.data}
+            loading={healthResult.loading}
+            onOpen={openHealth}
+          />
+          <button
+            className="primary-button"
+            onClick={ingest}
+            disabled={ingesting}
+          >
+            {ingesting ? (
+              <>
+                <span className="spinner light" aria-hidden="true" />
+                Processing…
+              </>
+            ) : (
+              <>
+                <RefreshCw size={15} aria-hidden="true" /> Run ingestion
+              </>
+            )}
+          </button>
+        </div>
       </header>
       {message && (
         <div className={`app-message message-${message.type}`} role="status">
@@ -120,12 +137,16 @@ export default function App() {
       )}
       <main>
         <div className="page-heading">
-          <p className="eyebrow">June 2026 · Paid media</p>
-          <h1>{view === "metrics" ? "Campaign metrics" : "Data health"}</h1>
+          <p className="eyebrow">
+            {view === "metrics"
+              ? "Unified campaign reporting"
+              : "Data operations"}
+          </p>
+          <h1>{view === "metrics" ? "Campaign performance" : "Data health"}</h1>
           <p>
             {view === "metrics"
-              ? "Normalized performance, with the source quality kept in view."
-              : "Understand what arrived, what was changed, and what needs attention."}
+              ? "Analyze normalized performance across every connected advertising platform."
+              : "Monitor ingestion, validation, normalization, and delivery coverage."}
           </p>
         </div>
         {view === "metrics" ? (
@@ -134,7 +155,6 @@ export default function App() {
             onFiltersChange={setFilters}
             refresh={refresh}
             onRefresh={refreshReport}
-            onHealth={openHealth}
             onSources={setSourceSelection}
             currency={currency}
             onCurrencyChange={setCurrency}
@@ -149,7 +169,7 @@ export default function App() {
         )}
       </main>
       <footer>
-        <span>Campaign Hub</span>
+        <span>Digitalzone · Campaign Data Hub</span>
         <span>
           Monetary totals are shown in {currency}. Canonical USD precision is
           retained.

@@ -1,6 +1,7 @@
 import type { Filters } from "../types";
-import { platformNames, platforms } from "../format";
 import { Search } from "lucide-react";
+import { DateRangePicker } from "./DateRangePicker";
+import { PlatformSelect } from "./PlatformSelect";
 
 export function FilterBar({
   filters,
@@ -15,32 +16,15 @@ export function FilterBar({
   currencies: string[];
   onCurrencyChange: (currency: string) => void;
 }) {
-  const invalid = Boolean(
-    filters.start_date &&
-    filters.end_date &&
-    filters.start_date > filters.end_date,
-  );
   return (
     <div className="filter-bar">
-      <label>
-        Platform
-        <select
+      <div className="filter-field platform-filter">
+        <span className="filter-label">Platform</span>
+        <PlatformSelect
           value={filters.platform}
-          onChange={(event) =>
-            onChange({
-              ...filters,
-              platform: event.target.value as Filters["platform"],
-            })
-          }
-        >
-          <option value="">All platforms</option>
-          {platforms.map((platform) => (
-            <option key={platform} value={platform}>
-              {platformNames[platform]}
-            </option>
-          ))}
-        </select>
-      </label>
+          onChange={(platform) => onChange({ ...filters, platform })}
+        />
+      </div>
       <label className="campaign-filter">
         Campaign search
         <span className="input-with-icon">
@@ -48,37 +32,23 @@ export function FilterBar({
           <input
             type="search"
             value={filters.campaign}
-            placeholder="Search campaigns"
+            placeholder="Search campaign name (optional)"
             onChange={(event) =>
               onChange({ ...filters, campaign: event.target.value })
             }
           />
         </span>
       </label>
-      <label>
-        Start date
-        <input
-          type="date"
-          value={filters.start_date}
-          onChange={(event) =>
-            onChange({ ...filters, start_date: event.target.value })
+      <div className="filter-field date-range-filter">
+        <span className="filter-label">Date range</span>
+        <DateRangePicker
+          start={filters.start_date}
+          end={filters.end_date}
+          onChange={(start_date, end_date) =>
+            onChange({ ...filters, start_date, end_date })
           }
         />
-      </label>
-      <span className="date-separator" aria-hidden="true">
-        →
-      </span>
-      <label>
-        End date
-        <input
-          type="date"
-          value={filters.end_date}
-          aria-invalid={invalid}
-          onChange={(event) =>
-            onChange({ ...filters, end_date: event.target.value })
-          }
-        />
-      </label>
+      </div>
       <label className="currency-filter">
         Display currency
         <select

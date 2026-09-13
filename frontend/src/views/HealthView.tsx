@@ -1,4 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  Braces,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  CircleX,
+  Database,
+  FileCheck2,
+  Files,
+  Search,
+} from "lucide-react";
 import { apiUrl } from "../api";
 import { count, platformNames, platforms, shortDate } from "../format";
 import { useApi } from "../hooks/useApi";
@@ -6,10 +18,13 @@ import type {
   DeliveriesResponse,
   Delivery,
   DeliveryDetail,
+  Health,
   Platform,
 } from "../types";
 import { DetailDialog } from "../components/DetailDialog";
+import { DateRangePicker } from "../components/DateRangePicker";
 import { PlatformLabel } from "../components/PlatformLabel";
+import { PlatformSelect } from "../components/PlatformSelect";
 import { RequestState } from "../components/RequestState";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -178,13 +193,37 @@ export function HealthView({
 }) {
   const result = useApi<DeliveriesResponse>(apiUrl("deliveries"), refresh);
   const [platform, setPlatform] = useState<Platform | "">("");
+  const [health, setHealth] = useState<Health | "">("");
+  const [query, setQuery] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [weekOffset, setWeekOffset] = useState(0);
   const data = result.data;
   const visible = useMemo(
     () =>
-      (data?.items ?? []).filter(
-        (item) => !platform || item.platform === platform,
-      ),
-    [data, platform],
+      (data?.items ?? []).filter((item) => {
+        const searchText = query.trim().toLocaleLowerCase();
+        const matchesQuery =
+          !searchText ||
+          [
+            item.file_name,
+            item.id,
+            item.status,
+            item.platform ? platformNames[item.platform] : "",
+          ].some((value) =>
+            (value ?? "").toLocaleLowerCase().includes(searchText),
+          );
+        const matchesDate =
+          (!startDate || (item.period_start ?? "") >= startDate) &&
+          (!endDate || (item.period_start ?? "") <= endDate);
+        return (
+          (!platform || item.platform === platform) &&
+          (!health || item.health === health) &&
+          matchesQuery &&
+          matchesDate
+        );
+      }),
+    [data, endDate, health, platform, query, startDate],
   );
   const healthTotals = useMemo(
     () => ({
@@ -194,6 +233,24 @@ export function HealthView({
     }),
     [visible],
   );
+  const matchingWeeks = useMemo(
+    () =>
+      (data?.weeks ?? []).filter(
+        (week) =>
+          (!startDate || week >= startDate) && (!endDate || week <= endDate),
+      ),
+    [data, endDate, startDate],
+  );
+  const maxWeekOffset = Math.max(0, matchingWeeks.length - 8);
+  const currentWeekOffset = Math.min(weekOffset, maxWeekOffset);
+  const weekEnd = matchingWeeks.length - currentWeekOffset;
+  const weekStart = Math.max(0, weekEnd - 8);
+  const visibleWeeks = matchingWeeks.slice(weekStart, weekEnd);
+  const sourceFiles = data?.items.filter((item) => item.file_name).length ?? 0;
+  const storedRecords =
+    data?.items.reduce((total, item) => total + item.rows_accepted, 0) ?? 0;
+  const attentionCount =
+    data?.items.filter((item) => item.health !== "pass").length ?? 0;
   useEffect(() => {
     if (
       selectedId &&
@@ -207,28 +264,17 @@ export function HealthView({
     <>
       <div className="health-heading">
         <div>
-          <h2>Delivery health</h2>
+          <h2>Delivery monitoring</h2>
           <p>
-            Every received file and expected weekly slot, including data that
-            did not enter the report.
+            Inspect each source delivery and trace validation results to the
+            original file.
           </p>
         </div>
-        <label>
-          Platform
-          <select
-            value={platform}
-            onChange={(event) =>
-              setPlatform(event.target.value as Platform | "")
-            }
-          >
-            <option value="">All platforms</option>
-            {platforms.map((item) => (
-              <option key={item} value={item}>
-                {platformNames[item]}
-              </option>
-            ))}
-          </select>
-        </label>
+        {data?.dataset_fingerprint && (
+          <span className="operational-status">
+            <span aria-hidden="true" /> Dataset available
+          </span>
+        )}
       </div>
       <RequestState {...result} onRetry={onRefresh} />
       {data && !data.dataset_fingerprint && (
@@ -242,31 +288,189 @@ export function HealthView({
       )}
       {data?.dataset_fingerprint && (
         <>
-          <div className="health-summary">
-            {(["pass", "warn", "fail"] as const).map((value) => (
-              <div className={`health-total health-${value}`} key={value}>
-                <StatusBadge value={value} />
-                <strong>{healthTotals[value]}</strong>
-                <span>deliveries</span>
+          <section className="pipeline-panel" aria-label="Ingestion pipeline">
+            <div className="pipeline-heading">
+              <div>
+                <h2>Ingestion pipeline</h2>
+                <p>
+                  Current dataset from source delivery through the reporting
+                  API.
+                </p>
               </div>
-            ))}
-            <div className="health-total">
-              <span className="status-badge status-all">
-                <span aria-hidden="true" />
-                All
+              <code>{data.dataset_fingerprint.slice(0, 8)}</code>
+            </div>
+            <div className="pipeline-steps">
+              <div className="pipeline-step">
+                <Files size={18} aria-hidden="true" />
+                <span>
+                  <strong>Files received</strong>
+                  <small>{sourceFiles} source files</small>
+                </span>
+              </div>
+              <ChevronRight
+                className="pipeline-arrow"
+                size={17}
+                aria-hidden="true"
+              />
+              <div className="pipeline-step">
+                <FileCheck2 size={18} aria-hidden="true" />
+                <span>
+                  <strong>Parse &amp; validate</strong>
+                  <small>{attentionCount} need attention</small>
+                </span>
+              </div>
+              <ChevronRight
+                className="pipeline-arrow"
+                size={17}
+                aria-hidden="true"
+              />
+              <div className="pipeline-step">
+                <Braces size={18} aria-hidden="true" />
+                <span>
+                  <strong>Normalize</strong>
+                  <small>{count(storedRecords)} accepted rows</small>
+                </span>
+              </div>
+              <ChevronRight
+                className="pipeline-arrow"
+                size={17}
+                aria-hidden="true"
+              />
+              <div className="pipeline-step">
+                <Database size={18} aria-hidden="true" />
+                <span>
+                  <strong>Store &amp; serve</strong>
+                  <small>Reporting API ready</small>
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <div className="health-filter-bar">
+            <label className="delivery-search">
+              Delivery search
+              <span className="input-with-icon">
+                <Search size={16} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Search file or delivery ID (optional)"
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setWeekOffset(0);
+                  }}
+                />
               </span>
-              <strong>{visible.length}</strong>
-              <span>report entries</span>
+            </label>
+            <div className="filter-field health-platform-filter">
+              <span className="filter-label">Platform</span>
+              <PlatformSelect
+                value={platform}
+                onChange={(value) => {
+                  setPlatform(value);
+                  setWeekOffset(0);
+                }}
+              />
+            </div>
+            <label className="health-status-filter">
+              Data health
+              <select
+                value={health}
+                onChange={(event) => {
+                  setHealth(event.target.value as Health | "");
+                  setWeekOffset(0);
+                }}
+              >
+                <option value="">All health statuses</option>
+                <option value="pass">Healthy</option>
+                <option value="warn">Warning</option>
+                <option value="fail">Failed</option>
+              </select>
+            </label>
+            <div className="filter-field health-date-filter">
+              <span className="filter-label">Delivery date</span>
+              <DateRangePicker
+                start={startDate}
+                end={endDate}
+                onChange={(start, end) => {
+                  setStartDate(start);
+                  setEndDate(end);
+                  setWeekOffset(0);
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="health-summary">
+            <div className="health-total health-pass">
+              <span className="health-total-icon">
+                <CheckCircle2 size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <span>Healthy</span>
+                <strong>{healthTotals.pass}</strong>
+                <small>deliveries</small>
+              </div>
+            </div>
+            <div className="health-total health-warn">
+              <span className="health-total-icon">
+                <CircleAlert size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <span>Warnings</span>
+                <strong>{healthTotals.warn}</strong>
+                <small>deliveries</small>
+              </div>
+            </div>
+            <div className="health-total health-fail">
+              <span className="health-total-icon">
+                <CircleX size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <span>Failed</span>
+                <strong>{healthTotals.fail}</strong>
+                <small>deliveries</small>
+              </div>
+            </div>
+            <div className="health-total health-all">
+              <span className="health-total-icon">
+                <Files size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <span>Total</span>
+                <strong>{visible.length}</strong>
+                <small>matching entries</small>
+              </div>
             </div>
           </div>
           <section className="panel matrix-panel">
             <div className="panel-heading">
               <div>
-                <h2>Weekly cadence</h2>
-                <p>
-                  Primary delivery status by platform and week. The June 29 week
-                  covers two days.
-                </p>
+                <h2>Delivery coverage</h2>
+                <p>Weekly source availability across connected platforms.</p>
+              </div>
+              <div className="week-pagination" aria-label="Coverage pagination">
+                <span>
+                  {visibleWeeks.length
+                    ? `${weekStart + 1}–${weekEnd} of ${matchingWeeks.length} weeks`
+                    : "No matching weeks"}
+                </span>
+                <button
+                  aria-label="Show older weeks"
+                  disabled={weekStart === 0}
+                  onClick={() => setWeekOffset(currentWeekOffset + 8)}
+                >
+                  <ChevronLeft size={16} aria-hidden="true" />
+                </button>
+                <button
+                  aria-label="Show newer weeks"
+                  disabled={currentWeekOffset === 0}
+                  onClick={() =>
+                    setWeekOffset(Math.max(0, currentWeekOffset - 8))
+                  }
+                >
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button>
               </div>
             </div>
             <div className="table-scroll">
@@ -274,7 +478,7 @@ export function HealthView({
                 <thead>
                   <tr>
                     <th>Platform</th>
-                    {data.weeks.map((week) => (
+                    {visibleWeeks.map((week) => (
                       <th key={week}>{shortDate(week)}</th>
                     ))}
                   </tr>
@@ -287,8 +491,8 @@ export function HealthView({
                         <th>
                           <PlatformLabel platform={item} />
                         </th>
-                        {data.weeks.map((week) => {
-                          const delivery = cellDelivery(data.items, item, week);
+                        {visibleWeeks.map((week) => {
+                          const delivery = cellDelivery(visible, item, week);
                           return (
                             <td key={week}>
                               {delivery ? (
@@ -315,6 +519,11 @@ export function HealthView({
                     ))}
                 </tbody>
               </table>
+              {visibleWeeks.length === 0 && (
+                <div className="table-empty standalone-empty">
+                  No delivery weeks match these filters.
+                </div>
+              )}
             </div>
           </section>
           <section className="panel">
@@ -325,8 +534,8 @@ export function HealthView({
                   <span className="count-label">{visible.length}</span>
                 </h2>
                 <p>
-                  The resend remains visible even though it contributes no
-                  metric records.
+                  Search, filter, and open a delivery to inspect its validation
+                  evidence.
                 </p>
               </div>
             </div>
@@ -375,6 +584,13 @@ export function HealthView({
                       <td className="numeric">{count(delivery.issues)}</td>
                     </tr>
                   ))}
+                  {visible.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="table-empty">
+                        No deliveries match these filters.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
