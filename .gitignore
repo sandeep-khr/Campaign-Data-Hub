@@ -11,4 +11,5 @@ dist/
 var/
 *.log
 .env
+docs/
 

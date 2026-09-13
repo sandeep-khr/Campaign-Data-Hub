@@ -1,9 +1,5 @@
 # Campaign Data Hub
 
-A small full-stack system that turns three advertising export formats into one traceable campaign dataset and reports the quality of every weekly delivery.
-
-The implementation favors code that can be read and explained in one sitting: platform adapters translate source fields, ordinary Python functions normalize and check rows, SQLite stores one atomic snapshot, FastAPI exposes it, and two React views make metrics and data health visible.
-
 ## Quick start with Docker
 
 With Docker Desktop running, build, ingest, and start the complete application with one command:
@@ -24,7 +20,7 @@ make ingest
 make run
 ```
 
-Open <http://127.0.0.1:8000>. FastAPI's interactive API documentation is at <http://127.0.0.1:8000/docs>.
+Open <http://127.0.0.1:8000>. FastAPI's API documentation is at <http://127.0.0.1:8000/docs>.
 
 `make ingest` is safe to repeat. It recalculates the snapshot and replaces the current rows in one transaction, so the second run produces the same fingerprint, counts, metric rows, and quality reports.
 
@@ -48,24 +44,9 @@ make check
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    Files["CSV and JSON deliveries"] --> Discover["Discover, hash and classify files"]
-    Rates["FX rates and reviewed overrides"] --> Normalize
-    Discover --> Adapters["Meta / Google / LinkedIn adapters"]
-    Adapters --> Normalize["Normalize dates, units, currency and names"]
-    Normalize --> Checks["Row, file and delivery checks"]
-    Checks --> Snapshot["Accepted records and quality reports"]
-    Snapshot -->|"atomic replacement"| SQLite[(SQLite)]
-    SQLite --> API[FastAPI]
-    API --> Metrics[Campaign metrics view]
-    API --> Health[Data health view]
-    API -->|"trigger a new snapshot"| Discover
-```
+![Campaign Data Hub architecture: source files and reviewed policy feed a synchronous ingestion pipeline, which atomically publishes a SQLite snapshot served through FastAPI to campaign metrics and data health views.](assets/architecture.png)
 
-The ingestion path is synchronous because the supplied corpus is 15 small files. It builds the complete result in memory before opening the write transaction. A file or row defect becomes structured evidence and processing continues. An unexpected configuration or persistence error does not replace the previously committed snapshot.
-
-SQLite is enough for a single-process assessment application and makes a fresh clone easy to run. The schema still has foreign keys, check constraints and uniqueness rules, so moving to PostgreSQL later would not require redesigning the data model. One ingestion lock makes the single-worker boundary explicit.
+[Editable Excalidraw diagram](assets/architecture.excalidraw) · [SVG version](assets/architecture.svg)
 
 ## Data model
 
@@ -81,7 +62,6 @@ USD remains the canonical reporting value. The dashboard can display USD or EUR 
 
 For one displayed number, the UI can open its source records. Each record links to a delivery, filename, content hash and line/index locator, while showing the raw values and the transformations that produced the canonical values.
 
-The interface uses Digitalzone's public logo, Futura PT headings, Roboto body text and its navy/violet/blue palette. The platform selector and popovers use Radix primitives, and the date range uses DayPicker. This follows the same composition model as shadcn components while keeping the existing Vite application and a small CSS layer instead of adding Tailwind solely for the component generator. The UI remains usable when hosted without the web fonts because each font stack has local fallbacks.
 
 Campaign metrics have platform, campaign, date-range and display-currency controls. Data health has a capped notification menu, a visible ingestion pipeline, file/ID search, platform and health filters, a date range, and an eight-week paginated delivery-coverage grid. These controls are data-driven and do not assume that the input belongs to a particular month.
 
@@ -113,7 +93,7 @@ The implemented checks cover:
 
 An error-level finding or a crashed check produces **fail**. Warning-only findings produce **warn**. A delivery with neither produces **pass**. Informational findings document accepted variations and transformations without reducing health.
 
-The supplied data produces 16 reports: 15 physical files plus one missing delivery. The result is 8 pass, 4 warn and 4 fail, with 368 accepted rows, 8 duplicate rows, 1 rejected row and 35 corrected rows. The detailed evidence is in [docs/DATA_QUALITY.md](docs/DATA_QUALITY.md).
+The supplied data produces 16 reports: 15 physical files plus one missing delivery. The result is 8 pass, 4 warn and 4 fail, with 368 accepted rows, 8 duplicate rows, 1 rejected row and 35 corrected rows. The detailed evidence is in [docs/DATA_QUALITY.md](DATA_QUALITY.md).
 
 ## Important interpretation
 
@@ -141,10 +121,33 @@ docs/                    assessment, design plan and findings
 
 ## Trade-offs and next steps
 
-The current database represents the latest view of the source directory. A production system should retain ingestion runs and file revisions, separate validation from promotion, and expose the last trusted snapshot while a new run is reviewed. For larger files, I would stream to staging tables and move ingestion to a durable job queue with request IDs rather than hold the complete result in memory.
+The current design is intentionally small: one process scans 15 local files, builds a complete snapshot in memory, and atomically replaces a SQLite database. That makes the assessment easy to run and makes idempotency visible. Its main limit is that it stores only the current snapshot and performs ingestion inside an HTTP request. It is suitable for this workload, but it is not the architecture I would use for continuous delivery from many advertising accounts.
 
-The reporting month and expected platforms are intentionally explicit for this assessment. The next useful change is a validated reporting configuration, followed by real campaign IDs, an approval workflow for corrections, authentication, pagination, observability, and a browser-level regression test. I would add cloud storage and queueing only when delivery volume, retries, or multiple workers require them.
+### Durable ingestion and end-to-end lineage
 
-The full implementation reasoning and schema are recorded in [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md). The original task is preserved in [docs/ASSESSMENT.md](docs/ASSESSMENT.md).
+When file volume, concurrent producers, or retry requirements justify asynchronous processing, I would evolve the ingestion path to:
 
-For interview preparation, follow [docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md). The final repository and public-host checklist is in [docs/SUBMISSION_AND_DEPLOYMENT.md](docs/SUBMISSION_AND_DEPLOYMENT.md).
+```text
+Platform connector or upload
+        → immutable raw object in S3
+        → ingestion manifest with content hash
+        → SQS message containing object and run IDs
+        → Lambda or container worker
+        → staging tables and quality checks
+        → reviewed promotion
+        → reporting tables and API
+```
+
+S3 would become the immutable source of truth instead of storing raw file bytes in SQLite. Each canonical record would retain an ingestion-run ID, object URI and version, content hash, source line/index, adapter version, transformation-rule version, exchange-rate version, and quality-report ID. This preserves the existing UI trace from a number back to the exact input while avoiding duplicated raw blobs in the database.
+
+SQS would provide buffering, retry visibility, and back-pressure. Messages would carry identifiers rather than file contents. Workers would use the content hash or a source delivery key as an idempotency key, extend message visibility while processing, and send repeatedly failing deliveries to a dead-letter queue. Lambda is appropriate for bounded files; large files or long-running batch work should use a container worker such as ECS/Fargate. I would introduce orchestration such as Step Functions only if the workflow gained independently retried stages or approval waits.
+
+The persistence model would move to PostgreSQL with `ingestion_runs`, immutable `delivery_versions`, staging records, check findings, transformation events, and promoted metric facts. A small current-snapshot pointer would let the API continue serving the last trusted version while a new run is being validated. Promotion would be transactional, corrections would require an approval record, and failed runs would never replace trusted reporting data. Date/platform indexes, table partitioning, and eventually a warehouse would be driven by measured query and retention needs.
+
+### Performance comparison experience
+
+The next user-facing reporting feature would be a **Performance comparison** section. The default would compare the active range with the immediately preceding range, while a custom mode would allow any two periods—for example, week one versus week three. It would show current value, comparison value, absolute change, and percentage change for spend, impressions, clicks, CTR, and CPC, followed by a daily or weekly trend and platform/campaign contribution breakdown.
+
+Comparison calculations should run on the backend using the same aggregation and missing-value policy as the main totals, ideally in one read transaction against one dataset fingerprint. This prevents two browser requests from comparing different snapshots. The response should identify partial weeks, missing deliveries, zero denominators, timezone boundaries, and the exchange-rate version; the UI should display unavailable change as `—` rather than inventing zero. Data-health markers on the trend would explain whether a surprising movement reflects campaign performance or incomplete input.
+
+Additional reporting improvements would include saved views, configurable columns, CSV export, server-side pagination/sorting/filtering, and shareable filter URLs. TanStack Table and a server-state cache would become useful once those requirements exist; the current small table and request hook remain easier to understand for 13 campaigns. Alerts should support acknowledgement, ownership, and links directly to the failed check instead of only displaying a notification count.

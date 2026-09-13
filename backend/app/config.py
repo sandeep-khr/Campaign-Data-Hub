@@ -1,5 +1,3 @@
-"""Small, explicit configuration for the supplied reporting period."""
-
 import json
 import os
 from dataclasses import dataclass
