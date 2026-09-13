@@ -48,6 +48,16 @@ make check
 
 [Editable Excalidraw diagram](assets/architecture.excalidraw) · [SVG version](assets/architecture.svg)
 
+## Application screenshots
+
+### Campaign performance
+
+![Campaign performance dashboard with filters, summary metrics, and a cross-platform campaign table](assets/campaign-performance.png)
+
+### Data health
+
+![Data health dashboard with ingestion status, delivery filters, and weekly source coverage](assets/data-health.png)
+
 ## Data model
 
 The database contains three tables:
