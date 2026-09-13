@@ -1,0 +1,17 @@
+services:
+  campaign-hub:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    environment:
+      HUB_DATABASE: /app/var/campaign_hub.sqlite
+      HUB_DATA_DIR: /app/data/deliveries
+    volumes:
+      - ./data:/app/data:ro
+      - ./config:/app/config:ro
+      - campaign-hub-database:/app/var
+    restart: unless-stopped
+
+volumes:
+  campaign-hub-database:

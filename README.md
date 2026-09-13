@@ -4,7 +4,17 @@ A small full-stack system that turns three advertising export formats into one t
 
 The implementation favors code that can be read and explained in one sitting: platform adapters translate source fields, ordinary Python functions normalize and check rows, SQLite stores one atomic snapshot, FastAPI exposes it, and two React views make metrics and data health visible.
 
-## Quick start
+## Quick start with Docker
+
+With Docker Desktop running, build, ingest, and start the complete application with one command:
+
+```bash
+docker compose up --build
+```
+
+Open <http://127.0.0.1:8000>. Stop it with `docker compose down`; the named SQLite volume is retained.
+
+## Local development
 
 Prerequisites: Python 3.12+, [uv](https://docs.astral.sh/uv/), Node.js 20.19+ and npm.
 
@@ -136,3 +146,5 @@ The current database represents the latest view of the source directory. A produ
 The reporting month and expected platforms are intentionally explicit for this assessment. The next useful change is a validated reporting configuration, followed by real campaign IDs, an approval workflow for corrections, authentication, pagination, observability, and a browser-level regression test. I would add cloud storage and queueing only when delivery volume, retries, or multiple workers require them.
 
 The full implementation reasoning and schema are recorded in [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md). The original task is preserved in [docs/ASSESSMENT.md](docs/ASSESSMENT.md).
+
+For interview preparation, follow [docs/CODEBASE_GUIDE.md](docs/CODEBASE_GUIDE.md). The final repository and public-host checklist is in [docs/SUBMISSION_AND_DEPLOYMENT.md](docs/SUBMISSION_AND_DEPLOYMENT.md).

@@ -1,4 +1,4 @@
-.PHONY: setup ingest build run dev-api dev-web check
+.PHONY: setup ingest build run dev-api dev-web check docker-up docker-down
 
 setup:
 	cd backend && uv sync
@@ -25,3 +25,9 @@ check:
 	cd frontend && npm run format:check
 	cd frontend && npm run lint
 	cd frontend && npm run build
+
+docker-up:
+	docker compose up --build
+
+docker-down:
+	docker compose down

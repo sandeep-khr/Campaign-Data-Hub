@@ -143,11 +143,6 @@ export default function App() {
               : "Data operations"}
           </p>
           <h1>{view === "metrics" ? "Campaign performance" : "Data health"}</h1>
-          <p>
-            {view === "metrics"
-              ? "Analyze normalized performance across every connected advertising platform."
-              : "Monitor ingestion, validation, normalization, and delivery coverage."}
-          </p>
         </div>
         {view === "metrics" ? (
           <MetricsView
