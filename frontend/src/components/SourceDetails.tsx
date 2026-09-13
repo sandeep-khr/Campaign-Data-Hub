@@ -1,6 +1,6 @@
 import { apiUrl } from "../api";
 import { useApi } from "../hooks/useApi";
-import { count, money, platformNames } from "../format";
+import { convertUsd, count, money, platformNames } from "../format";
 import type { RecordsResponse, SourceSelection } from "../types";
 import { DetailDialog } from "./DetailDialog";
 import { RequestState } from "./RequestState";
@@ -37,15 +37,17 @@ export function SourceDetails({
           </p>
           <p>
             CPC:{" "}
-            {(
-              selection.totals.ratio_basis.cpc.spend_usd_micros / 1_000_000
+            {convertUsd(
+              selection.totals.ratio_basis.cpc.spend_usd_micros / 1_000_000,
+              selection.rateToUsd,
             ).toFixed(6)}{" "}
-            USD ÷ {count(selection.totals.ratio_basis.cpc.clicks)} clicks from{" "}
+            {selection.currency} ÷{" "}
+            {count(selection.totals.ratio_basis.cpc.clicks)} clicks from{" "}
             {count(selection.totals.ratio_basis.cpc.records)} rows.
           </p>
           <small>
             Each ratio uses only rows with both required fields present. Zero
-            denominators produce no ratio.
+            denominators produce no ratio. Canonical money remains in USD.
           </small>
         </div>
       )}
@@ -72,7 +74,11 @@ export function SourceDetails({
                     <span className="source-campaign">{row.campaign}</span>
                   </span>
                   <span className="source-amount">
-                    {money(row.spend_usd_display)}{" "}
+                    {money(
+                      row.spend_usd,
+                      selection.currency,
+                      selection.rateToUsd,
+                    )}{" "}
                     <span aria-hidden="true">↗</span>
                   </span>
                 </summary>
@@ -83,7 +89,8 @@ export function SourceDetails({
                   </p>
                   <div className="mini-stats">
                     <span>
-                      Exact USD <strong>{row.spend_usd ?? "Unknown"}</strong>
+                      Canonical USD{" "}
+                      <strong>{row.spend_usd ?? "Unknown"}</strong>
                     </span>
                     <span>
                       Impressions <strong>{count(row.impressions)}</strong>

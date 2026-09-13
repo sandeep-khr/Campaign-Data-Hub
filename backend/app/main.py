@@ -59,13 +59,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def campaign_metrics(query: Annotated[schemas.MetricsQuery, Query()]):
         with database.connection(settings.database_path) as con:
             version = fingerprint(con)
+            context = database.current_context(con)
             rows = database.read_records(con, **query.filters())
             deliveries = database.read_deliveries(con)
         return {
             "dataset_fingerprint": version,
             "items": metrics.grouped_metrics(rows, query.group_by),
             "totals": metrics.aggregate(rows),
-            "caveats": metrics.caveats(deliveries, **query.filters()),
+            "caveats": metrics.caveats(
+                deliveries,
+                platform=query.platform,
+                start_date=query.start_date,
+                end_date=query.end_date,
+            ),
+            "exchange_rates_to_usd": context["exchange_rates"] if context else {"USD": "1"},
         }
 
     @app.get("/api/records", response_model=schemas.RecordsResponse)

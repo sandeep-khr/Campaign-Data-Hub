@@ -160,7 +160,13 @@ def read_checks(con, delivery_id: str) -> list[dict]:
 
 
 def read_records(
-    con, platform=None, start_date=None, end_date=None, campaign_key=None, delivery_id=None
+    con,
+    platform=None,
+    start_date=None,
+    end_date=None,
+    campaign=None,
+    campaign_key=None,
+    delivery_id=None,
 ):
     clauses = ["d.status = 'processed'"]
     params = []
@@ -174,6 +180,9 @@ def read_records(
         if value is not None:
             clauses.append(f"{column} {operator} ?")
             params.append(str(value))
+    if campaign:
+        clauses.append("instr(m.campaign_key, ?) > 0")
+        params.append(campaign.casefold())
     query = (
         "SELECT m.*, d.platform, d.file_name, d.content_sha256, d.health "
         "FROM metric_records m JOIN deliveries d ON m.delivery_id = d.id WHERE "

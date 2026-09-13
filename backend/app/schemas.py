@@ -16,6 +16,7 @@ class Filters(BaseModel):
     platform: Platform | None = None
     start_date: date | None = None
     end_date: date | None = None
+    campaign: str | None = Field(default=None, max_length=100)
 
     @field_validator("start_date", "end_date", mode="before")
     @classmethod
@@ -31,8 +32,18 @@ class Filters(BaseModel):
             raise ValueError("start_date must be on or before end_date.")
         return self
 
+    @field_validator("campaign")
+    @classmethod
+    def campaign_search(cls, value):
+        if value is None:
+            return None
+        return value.strip() or None
+
     def filters(self):
-        return {name: getattr(self, name) for name in ("platform", "start_date", "end_date")}
+        return {
+            name: getattr(self, name)
+            for name in ("platform", "start_date", "end_date", "campaign")
+        }
 
 
 class MetricsQuery(Filters):
@@ -106,6 +117,7 @@ class MetricsResponse(DatasetResponse):
     items: list[MetricItem]
     totals: Totals
     caveats: list[Caveat]
+    exchange_rates_to_usd: dict[str, str]
     ratio_policy: Literal["paired"] = "paired"
 
 

@@ -67,6 +67,8 @@ The database contains three tables:
 
 Money is stored as integer millionths of a US dollar. This preserves the supplied Google micro-unit amounts and the fixed currency conversions without binary floating-point drift. Unknown values remain `NULL`; they are not turned into zero. CTR and CPC use only rows where both parts of the ratio are known, and the API returns that calculation basis.
 
+USD remains the canonical reporting value. The dashboard can display USD or EUR using the finance-provided rates stored with the ingested snapshot. Because the source configuration defines one unit of currency as a USD value, the presentation conversion is `canonical USD / rate`. Changing the display currency never rewrites stored metrics or their source evidence.
+
 For one displayed number, the UI can open its source records. Each record links to a delivery, filename, content hash and line/index locator, while showing the raw values and the transformations that produced the canonical values.
 
 ## API
@@ -80,7 +82,7 @@ For one displayed number, the UI can open its source records. Each record links 
 | `GET` | `/api/deliveries/{id}` | One delivery with every check and finding |
 | `GET` | `/api/health` | Database connectivity check |
 
-`/api/metrics` accepts `platform`, `start_date`, `end_date`, and `group_by`. Dates require `YYYY-MM-DD`, reversed ranges and unknown parameters return `422`, missing resources return `404`, stale trace requests and concurrent ingestion return `409`.
+`/api/metrics` accepts `platform`, `campaign`, `start_date`, `end_date`, and `group_by`. Campaign matching is case-insensitive and applies to rows, totals and source trace results. Dates require `YYYY-MM-DD`, reversed ranges and unknown parameters return `422`, missing resources return `404`, stale trace requests and concurrent ingestion return `409`.
 
 ## Quality policy
 
@@ -118,6 +120,7 @@ backend/app/metrics.py    one aggregation path for rows and totals
 backend/app/main.py       API routes and ingestion lock
 frontend/src/views/      metrics and data-health screens
 frontend/src/components/ shared filters, statuses and trace details
+frontend/public/platforms/ supplied advertising-platform artwork
 config/                  reviewed data-policy overrides
 docs/                    assessment, design plan and findings
 ```

@@ -1,4 +1,11 @@
 import { useState } from "react";
+import {
+  CircleDollarSign,
+  DollarSign,
+  Eye,
+  MousePointerClick,
+  Percent,
+} from "lucide-react";
 import { apiUrl } from "../api";
 import { useApi } from "../hooks/useApi";
 import {
@@ -17,6 +24,7 @@ import type {
   Totals,
 } from "../types";
 import { FilterBar } from "../components/FilterBar";
+import { PlatformLabel } from "../components/PlatformLabel";
 import { RequestState } from "../components/RequestState";
 
 type SortField = "spend_usd_micros" | "ctr";
@@ -28,6 +36,8 @@ export function MetricsView({
   onRefresh,
   onHealth,
   onSources,
+  currency,
+  onCurrencyChange,
 }: {
   filters: Filters;
   onFiltersChange: (filters: Filters) => void;
@@ -35,6 +45,8 @@ export function MetricsView({
   onRefresh: () => void;
   onHealth: (id?: string) => void;
   onSources: (selection: SourceSelection) => void;
+  currency: string;
+  onCurrencyChange: (currency: string) => void;
 }) {
   const [sort, setSort] = useState<{ field: SortField; descending: boolean }>({
     field: "spend_usd_micros",
@@ -50,6 +62,14 @@ export function MetricsView({
     refresh,
   );
   const data = result.data;
+  const currencies = Object.keys(
+    data?.exchange_rates_to_usd ?? { USD: "1" },
+  ).sort((left, right) => {
+    if (left === "USD") return -1;
+    if (right === "USD") return 1;
+    return left.localeCompare(right);
+  });
+  const rateToUsd = Number(data?.exchange_rates_to_usd[currency] ?? 1);
   const sorted = [...(data?.items ?? [])].sort((a, b) => {
     const left = a[sort.field],
       right = b[sort.field];
@@ -72,6 +92,8 @@ export function MetricsView({
     onSources({
       title: row?.campaign ?? "Filtered totals",
       fingerprint: data.dataset_fingerprint,
+      currency,
+      rateToUsd,
       totals,
       filters: {
         ...filters,
@@ -83,7 +105,13 @@ export function MetricsView({
   }
   return (
     <>
-      <FilterBar filters={filters} onChange={onFiltersChange} />
+      <FilterBar
+        filters={filters}
+        onChange={onFiltersChange}
+        currency={currency}
+        currencies={currencies}
+        onCurrencyChange={onCurrencyChange}
+      />
       {invalid && (
         <div className="notice notice-error" role="alert">
           Start date must be on or before end date.
@@ -104,14 +132,22 @@ export function MetricsView({
         <>
           <div className="stats-grid">
             <div className="stat-card featured">
-              <span>
-                Total spend <small>USD</small>
-              </span>
-              <strong>{money(data.totals.spend_usd_display)}</strong>
+              <div className="stat-card-heading">
+                <span>
+                  Total spend <small>{currency}</small>
+                </span>
+                <DollarSign size={18} aria-hidden="true" />
+              </div>
+              <strong>
+                {money(data.totals.spend_usd, currency, rateToUsd)}
+              </strong>
               <p>{count(data.totals.records)} accepted records</p>
             </div>
             <div className="stat-card">
-              <span>Impressions</span>
+              <div className="stat-card-heading">
+                <span>Impressions</span>
+                <Eye size={18} aria-hidden="true" />
+              </div>
               <strong>{count(data.totals.impressions)}</strong>
               <p>
                 {data.totals.missing_impressions
@@ -120,7 +156,10 @@ export function MetricsView({
               </p>
             </div>
             <div className="stat-card">
-              <span>Known clicks</span>
+              <div className="stat-card-heading">
+                <span>Known clicks</span>
+                <MousePointerClick size={18} aria-hidden="true" />
+              </div>
               <strong>{count(data.totals.clicks)}</strong>
               <p>
                 {data.totals.missing_clicks
@@ -129,13 +168,19 @@ export function MetricsView({
               </p>
             </div>
             <div className="stat-card">
-              <span>Click-through rate</span>
+              <div className="stat-card-heading">
+                <span>Click-through rate</span>
+                <Percent size={18} aria-hidden="true" />
+              </div>
               <strong>{percent(data.totals.ctr)}</strong>
               <p>Rows with clicks + impressions</p>
             </div>
             <div className="stat-card">
-              <span>Cost per click</span>
-              <strong>{cpc(data.totals.cpc)}</strong>
+              <div className="stat-card-heading">
+                <span>Cost per click</span>
+                <CircleDollarSign size={18} aria-hidden="true" />
+              </div>
+              <strong>{cpc(data.totals.cpc, currency, rateToUsd)}</strong>
               <p>Rows with spend + clicks</p>
             </div>
           </div>
@@ -215,7 +260,7 @@ export function MetricsView({
                       }
                     >
                       <button onClick={() => changeSort("spend_usd_micros")}>
-                        Spend (USD){" "}
+                        Spend ({currency}){" "}
                         {sort.field === "spend_usd_micros"
                           ? sort.descending
                             ? "↓"
@@ -261,17 +306,10 @@ export function MetricsView({
                         </button>
                       </td>
                       <td>
-                        <span
-                          className={`platform-label platform-${row.platform}`}
-                        >
-                          <span aria-hidden="true">
-                            {platformNames[row.platform][0]}
-                          </span>
-                          {platformNames[row.platform]}
-                        </span>
+                        <PlatformLabel platform={row.platform} />
                       </td>
                       <td className="numeric money-cell">
-                        {money(row.spend_usd_display)}
+                        {money(row.spend_usd, currency, rateToUsd)}
                       </td>
                       <td className="numeric">{count(row.impressions)}</td>
                       <td className="numeric">
@@ -287,7 +325,9 @@ export function MetricsView({
                         )}
                       </td>
                       <td className="numeric">{percent(row.ctr)}</td>
-                      <td className="numeric">{cpc(row.cpc)}</td>
+                      <td className="numeric">
+                        {cpc(row.cpc, currency, rateToUsd)}
+                      </td>
                     </tr>
                   ))}
                   {sorted.length === 0 && (
@@ -302,7 +342,8 @@ export function MetricsView({
             </div>
             <div className="panel-footer">
               <span>
-                CTR and CPC use rows with both required fields present.{" "}
+                Spend and CPC are displayed in {currency}. CTR and CPC use rows
+                with both required fields present. Canonical money stays in USD.{" "}
                 <strong>—</strong> means unavailable.
               </span>
               <span>Click a campaign to trace its sources.</span>

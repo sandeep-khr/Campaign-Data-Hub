@@ -14,6 +14,7 @@ def test_initial_state_and_repeated_api_ingestion(client):
     assert first.status_code == 200, first.text
     metrics = client.get("/api/metrics").json()
     assert len(metrics["items"]) == 13
+    assert metrics["exchange_rates_to_usd"] == {"EUR": "1.08", "USD": "1.0"}
     assert metrics["totals"]["spend_usd_micros"] == 54_277_299_999
     assert metrics["totals"]["ctr"] == pytest.approx(346_988 / 16_177_923)
     assert metrics["totals"]["cpc"] == pytest.approx(53_509.722799 / 346_563)
@@ -55,6 +56,13 @@ def test_filters_groupings_and_source_trace(client):
     assert records[0]["raw"]["Cost (micros)"] == "64629999"
     assert records[0]["source_locator"] == "line:17"
     assert any(rule["id"] == "google.micros_to_usd" for rule in records[0]["applied_rules"])
+
+    searched = client.get("/api/metrics?campaign=SEARCH").json()
+    assert {row["campaign"] for row in searched["items"]} == {
+        "Search - Brand",
+        "Search - Generic",
+    }
+    assert searched["totals"]["records"] == 60
 
 
 def test_delivery_details_include_successes_failures_and_correction(client):

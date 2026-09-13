@@ -13,7 +13,9 @@ export default function App() {
     platform: "",
     start_date: "",
     end_date: "",
+    campaign: "",
   });
+  const [currency, setCurrency] = useState("USD");
   const [refresh, setRefresh] = useState(0);
   const [ingesting, setIngesting] = useState(false);
   const [message, setMessage] = useState<{
@@ -134,6 +136,8 @@ export default function App() {
             onRefresh={refreshReport}
             onHealth={openHealth}
             onSources={setSourceSelection}
+            currency={currency}
+            onCurrencyChange={setCurrency}
           />
         ) : (
           <HealthView
@@ -147,7 +151,8 @@ export default function App() {
       <footer>
         <span>Campaign Hub</span>
         <span>
-          All monetary totals are shown in USD. Source precision is retained.
+          Monetary totals are shown in {currency}. Canonical USD precision is
+          retained.
         </span>
       </footer>
       {sourceSelection && (

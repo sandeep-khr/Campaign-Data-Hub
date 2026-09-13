@@ -247,7 +247,8 @@ main {
   letter-spacing: 0.06em;
 }
 select,
-input[type="date"] {
+input[type="date"],
+input[type="search"] {
   height: 39px;
   padding: 0 11px;
   border: 1px solid #cbd4ce;
@@ -258,6 +259,29 @@ input[type="date"] {
   letter-spacing: 0;
   font-size: 14px;
   font-weight: 500;
+}
+.campaign-filter {
+  flex: 1;
+  min-width: 210px !important;
+}
+.currency-filter {
+  min-width: 126px !important;
+}
+.input-with-icon {
+  position: relative;
+  display: block;
+}
+.input-with-icon svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  color: #82908b;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.input-with-icon input {
+  width: 100%;
+  padding-left: 36px;
 }
 select:focus,
 input:focus,
@@ -272,17 +296,6 @@ summary:focus-visible {
   place-items: center;
   color: #8b9893;
 }
-.filter-note {
-  margin-left: auto;
-  align-self: center;
-  color: var(--muted);
-  font-size: 13px;
-}
-.filter-note strong {
-  color: var(--ink);
-  margin-left: 5px;
-}
-
 .stats-grid {
   display: grid;
   grid-template-columns: 1.35fr repeat(4, 1fr);
@@ -297,10 +310,18 @@ summary:focus-visible {
   border-radius: 11px;
   box-shadow: 0 1px 1px rgb(16 48 41 / 2%);
 }
-.stat-card > span {
+.stat-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   color: var(--muted);
+}
+.stat-card-heading > span {
   font-size: 12px;
   font-weight: 600;
+}
+.stat-card-heading > svg {
+  color: #799188;
 }
 .stat-card small {
   display: inline-block;
@@ -328,9 +349,12 @@ summary:focus-visible {
   border-color: var(--green);
   color: white;
 }
-.stat-card.featured > span,
+.stat-card.featured .stat-card-heading,
 .stat-card.featured p {
   color: #d3e1dc;
+}
+.stat-card.featured .stat-card-heading > svg {
+  color: #d5e87e;
 }
 .stat-card.featured strong {
   font-size: 31px;
@@ -491,24 +515,11 @@ th button {
   gap: 8px;
   font-weight: 500;
 }
-.platform-label > span {
+.platform-logo {
   width: 21px;
   height: 21px;
-  display: grid;
-  place-items: center;
-  border-radius: 5px;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-}
-.platform-meta > span {
-  background: #1d72df;
-}
-.platform-google > span {
-  background: #d54c39;
-}
-.platform-linkedin > span {
-  background: #176da4;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 .metric-note {
   color: var(--amber);
@@ -1041,10 +1052,6 @@ footer > span:first-child {
   }
   .filter-bar {
     flex-wrap: wrap;
-  }
-  .filter-note {
-    width: 100%;
-    margin: 0;
   }
   .code-columns {
     grid-template-columns: 1fr;

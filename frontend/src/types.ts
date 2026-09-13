@@ -7,6 +7,7 @@ export interface Filters {
   platform: Platform | "";
   start_date: string;
   end_date: string;
+  campaign: string;
 }
 
 export interface Money {
@@ -53,6 +54,7 @@ export interface MetricsResponse {
   items: MetricItem[];
   totals: Totals;
   caveats: Caveat[];
+  exchange_rates_to_usd: Record<string, string>;
   ratio_policy: "paired";
 }
 
@@ -136,6 +138,8 @@ export interface SourceSelection {
   title: string;
   filters: Record<string, string>;
   fingerprint: string;
+  currency: string;
+  rateToUsd: number;
   totals?: Totals;
 }
 

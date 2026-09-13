@@ -9,6 +9,7 @@ import type {
   Platform,
 } from "../types";
 import { DetailDialog } from "../components/DetailDialog";
+import { PlatformLabel } from "../components/PlatformLabel";
 import { RequestState } from "../components/RequestState";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -284,12 +285,7 @@ export function HealthView({
                     .map((item) => (
                       <tr key={item}>
                         <th>
-                          <span className={`platform-label platform-${item}`}>
-                            <span aria-hidden="true">
-                              {platformNames[item][0]}
-                            </span>
-                            {platformNames[item]}
-                          </span>
+                          <PlatformLabel platform={item} />
                         </th>
                         {data.weeks.map((week) => {
                           const delivery = cellDelivery(data.items, item, week);
@@ -361,9 +357,11 @@ export function HealthView({
                       </td>
                       <td>{shortDate(delivery.period_start)}</td>
                       <td>
-                        {delivery.platform
-                          ? platformNames[delivery.platform]
-                          : "Unknown"}
+                        {delivery.platform ? (
+                          <PlatformLabel platform={delivery.platform} />
+                        ) : (
+                          "Unknown"
+                        )}
                       </td>
                       <td>
                         <StatusBadge value={delivery.status} />
